@@ -1,0 +1,5 @@
+flask>=3.0
+numpy>=1.26
+torch>=2.2
+transformers>=4.40
+safetensors>=0.4
