@@ -1,6 +1,6 @@
 # Teaching Notes / 教学说明
 
-This project is designed for students who are not AI or computer science specialists. It shows that a language model generates text step by step, choosing one next token at a time. 这个项目面向非 AI、非计算机专业的学生。它展示的是：语言模型并不是一次性写完整段文字，而是一步一步预测下一个 token。
+This project is designed for humanities, social science, and interdisciplinary AI-related classes where students are not expected to be AI or computer science specialists. It shows that a language model generates text step by step, choosing one next token at a time. 这个项目面向人文社科及跨学科 AI 相关课程，适合非 AI、非计算机专业的学生。它展示的是：语言模型并不是一次性写完整段文字，而是一步一步预测下一个 token。
 
 ## What Students Should Notice / 学生应观察什么
 
