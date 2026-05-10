@@ -9,13 +9,13 @@ This project is designed for humanities, social science, and interdisciplinary A
 - The colored links are an attribution-style visualization, not a direct window into the model's mind. 彩色连线是一种近似的影响可视化，不等于直接看见模型“内心”。
 - A token may be a word, part of a word, punctuation, or spacing. token 可能是一个词、词的一部分、标点，也可能是空格。
 
-## Suggested Demo Types / 建议的 demo 类型
+## Selected Demo Set / 选定 demo 组合
 
-Use short, neutral prompts from different areas. 建议使用简短、中性的提示词，并让三个示例来自不同领域，例如：
+Use the three demos as a compact route from one familiar topic to broader AI-society questions. 这三个 demo 可以作为一条简短的课堂路径：先从相对熟悉的问题进入，再转向更广泛的 AI 与社会议题。
 
-- A daily-life explanation. 一个日常生活解释。
-- A simple scientific concept. 一个简单科学概念。
-- A social or cultural question. 一个社会或文化问题。
+- `01_解释一下著作权.html`: connects AI discussion with copyright, culture, authorship, and creative work. `01_解释一下著作权.html`：把 AI 讨论连接到著作权、文化、作者身份与创作活动。
+- `02_How_does_big_data_recommendation_decide_what_content_to_show.html`: connects AI discussion with platforms, recommendation, communication, and attention. `02_How_does_big_data_recommendation_decide_what_content_to_show.html`：把 AI 讨论连接到平台、推荐、传播与注意力分配。
+- `03_What_is_data_bias.html`: connects AI discussion with data, representation, social impact, and fairness. `03_What_is_data_bias.html`：把 AI 讨论连接到数据、代表性、社会影响与公平性。
 
 ## Discussion Questions / 课堂讨论问题
 
