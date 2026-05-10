@@ -1,10 +1,12 @@
 # Next-Token Visualizer / 下一个 Token 可视化教具
 
-A small classroom tool for showing how a language model generates text one token at a time. 这是一个面向课堂教学的小工具，用来展示语言模型如何一步一步预测并生成下一个 token。
+A classroom tool for humanities, social science, and interdisciplinary instructors who want to discuss AI without requiring students to code. It shows how a language model generates text one token at a time. 这是一个给人文社科及跨学科课程教师使用的课堂教具，适合在不要求学生写代码的情况下讨论 AI。它用来展示语言模型如何一步一步预测并生成下一个 token。
 
 ## What It Does / 它展示什么
 
 The app lets you enter a short prompt, runs a local Qwen language model, and saves an interactive HTML visualization. The visualization shows generated tokens and highlights earlier tokens that had stronger attribution scores for each next-token step. 这个工具允许你输入一个简短提示词，在本地运行 Qwen 语言模型，并保存一个交互式 HTML 可视化。可视化会展示模型生成的 token，并高亮在每一步生成中影响分数较高的前文 token。
+
+It is especially useful for law, communication, sociology, public policy, education, digital humanities, and other courses where students discuss how AI systems produce, rank, recommend, or classify information. 它尤其适合法学、新闻传播、社会学、公共政策、教育学、数字人文等课程，用来讨论 AI 系统如何生成、排序、推荐或分类信息。
 
 This is intended as a teaching aid, not as a complete explanation of how large language models work. 它是教学辅助工具，不是对大语言模型工作机制的完整解释。
 
@@ -43,7 +45,7 @@ Generated visualizations are saved into. 生成出来的可视化文件会保存
 outputs/
 ```
 
-For a public teaching repository, it is useful to include a few selected examples. Three examples from different topic areas usually work well. 如果要公开作为教学仓库，建议保留少量精选示例。三个来自不同领域的例子通常就足够。
+For a public teaching repository, it is useful to include a few selected examples. The included demo set uses three classroom-friendly topics in Chinese and English: copyright, big-data recommendation, and data bias. 如果要公开作为教学仓库，建议保留少量精选示例。当前 demo 设计包含三个适合课堂讨论的主题，并提供中英文版本：著作权、大数据推荐、数据偏见。
 
 ## Uploading to GitHub / 上传到 GitHub
 
