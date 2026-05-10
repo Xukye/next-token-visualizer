@@ -1,18 +1,12 @@
 # Next-Token Visualizer / 下一个 Token 可视化教具
 
-A small classroom tool for showing how a language model generates text one token at a time.
-
-这是一个面向课堂教学的小工具，用来展示语言模型如何一步一步预测并生成下一个 token。
+A small classroom tool for showing how a language model generates text one token at a time. 这是一个面向课堂教学的小工具，用来展示语言模型如何一步一步预测并生成下一个 token。
 
 ## What It Does / 它展示什么
 
-The app lets you enter a short prompt, runs a local Qwen language model, and saves an interactive HTML visualization. The visualization shows generated tokens and highlights earlier tokens that had stronger attribution scores for each next-token step.
+The app lets you enter a short prompt, runs a local Qwen language model, and saves an interactive HTML visualization. The visualization shows generated tokens and highlights earlier tokens that had stronger attribution scores for each next-token step. 这个工具允许你输入一个简短提示词，在本地运行 Qwen 语言模型，并保存一个交互式 HTML 可视化。可视化会展示模型生成的 token，并高亮在每一步生成中影响分数较高的前文 token。
 
-这个工具允许你输入一个简短提示词，在本地运行 Qwen 语言模型，并保存一个交互式 HTML 可视化。可视化会展示模型生成的 token，并高亮在每一步生成中影响分数较高的前文 token。
-
-This is intended as a teaching aid, not as a complete explanation of how large language models work.
-
-它是教学辅助工具，不是对大语言模型工作机制的完整解释。
+This is intended as a teaching aid, not as a complete explanation of how large language models work. 它是教学辅助工具，不是对大语言模型工作机制的完整解释。
 
 ## Quick Start / 快速开始
 
@@ -29,69 +23,45 @@ Then open:
 http://localhost:5050
 ```
 
-On macOS, you can also double-click:
+On macOS, you can also double-click. 在 macOS 上，也可以直接双击启动：
 
 ```text
 start_server.command
 ```
 
-在 macOS 上，也可以直接双击 `start_server.command` 启动。
-
 ## Notes on Installation / 安装说明
 
-The first run downloads the model `Qwen/Qwen2.5-1.5B-Instruct` from Hugging Face, so it requires an internet connection and enough local disk space.
+The first run downloads the model `Qwen/Qwen2.5-1.5B-Instruct` from Hugging Face, so it requires an internet connection and enough local disk space. 首次运行会从 Hugging Face 下载 `Qwen/Qwen2.5-1.5B-Instruct` 模型，因此需要联网，并需要足够的本地磁盘空间。
 
-首次运行会从 Hugging Face 下载 `Qwen/Qwen2.5-1.5B-Instruct` 模型，因此需要联网，并需要足够的本地磁盘空间。
-
-PyTorch installation can vary by operating system and hardware. If `pip install -r requirements.txt` does not install a working PyTorch version, follow the official PyTorch installation selector for your machine, then run the install command again for the remaining packages.
-
-不同系统和硬件上的 PyTorch 安装方式可能不同。如果 `pip install -r requirements.txt` 没有安装到可用的 PyTorch，请先按照 PyTorch 官方安装指引安装适合自己机器的版本，再安装其他依赖。
+PyTorch installation can vary by operating system and hardware. If `pip install -r requirements.txt` does not install a working PyTorch version, follow the official PyTorch installation selector for your machine, then run the install command again for the remaining packages. 不同系统和硬件上的 PyTorch 安装方式可能不同。如果 `pip install -r requirements.txt` 没有安装到可用的 PyTorch，请先按照 PyTorch 官方安装指引安装适合自己机器的版本，再安装其他依赖。
 
 ## Saved Outputs / 保存的结果
 
-Generated visualizations are saved into:
+Generated visualizations are saved into. 生成出来的可视化文件会保存在：
 
 ```text
 outputs/
 ```
 
-生成出来的可视化文件会保存在 `outputs/` 目录中。
-
-For a public teaching repository, it is useful to include a few selected examples. Three examples from different topic areas usually work well.
-
-如果要公开作为教学仓库，建议保留少量精选示例。三个来自不同领域的例子通常就足够。
+For a public teaching repository, it is useful to include a few selected examples. Three examples from different topic areas usually work well. 如果要公开作为教学仓库，建议保留少量精选示例。三个来自不同领域的例子通常就足够。
 
 ## Uploading to GitHub / 上传到 GitHub
 
-If you are using the GitHub website:
+If you are using the GitHub website. 如果你使用 GitHub 网页上传：
 
-1. Create a new repository.
-2. Upload the contents of this folder.
-3. Keep `app.py`, `templates/`, `outputs/`, `README.md`, `requirements.txt`, `TEACHING_NOTES.md`, `LICENSE`, and `.gitignore`.
-4. If you generate example visualizations, place the selected `.html` files in `outputs/`.
-5. Do not upload `.DS_Store`, `__pycache__/`, `.venv/`, or model cache folders.
-
-如果你使用 GitHub 网页上传：
-
-1. 新建一个 repository。
-2. 上传这个文件夹里的内容。
-3. 保留 `app.py`、`templates/`、`outputs/`、`README.md`、`requirements.txt`、`TEACHING_NOTES.md`、`LICENSE` 和 `.gitignore`。
-4. 如果你生成了示例可视化，把精选的 `.html` 文件放在 `outputs/` 里。
-5. 不要上传 `.DS_Store`、`__pycache__/`、`.venv/` 或模型缓存文件夹。
+1. Create a new repository. 新建一个 repository。
+2. Upload the contents of this folder. 上传这个文件夹里的内容。
+3. Keep `app.py`, `templates/`, `outputs/`, `README.md`, `requirements.txt`, `TEACHING_NOTES.md`, `LICENSE`, and `.gitignore`. 保留 `app.py`、`templates/`、`outputs/`、`README.md`、`requirements.txt`、`TEACHING_NOTES.md`、`LICENSE` 和 `.gitignore`。
+4. If you generate example visualizations, place the selected `.html` files in `outputs/`. 如果你生成了示例可视化，把精选的 `.html` 文件放在 `outputs/` 里。
+5. Do not upload `.DS_Store`, `__pycache__/`, `.venv/`, or model cache folders. 不要上传 `.DS_Store`、`__pycache__/`、`.venv/` 或模型缓存文件夹。
 
 ## Suggested Classroom Use / 课堂使用建议
 
-1. Ask students what they think the model is doing before pressing generate.
-2. Generate a short answer.
-3. Play the visualization step by step.
-4. Discuss the difference between "next-token prediction" and "understanding."
-5. Emphasize that attribution visualizations are approximations, not direct proof of model reasoning.
-
-1. 生成前，先让学生猜模型到底在做什么。
-2. 生成一个短回答。
-3. 逐步播放可视化。
-4. 讨论“预测下一个 token”和“理解”之间的区别。
-5. 强调归因可视化只是近似，并不是模型推理过程的直接证据。
+1. Ask students what they think the model is doing before pressing generate. 生成前，先让学生猜模型到底在做什么。
+2. Generate a short answer. 生成一个短回答。
+3. Play the visualization step by step. 逐步播放可视化。
+4. Discuss the difference between "next-token prediction" and "understanding." 讨论“预测下一个 token”和“理解”之间的区别。
+5. Emphasize that attribution visualizations are approximations, not direct proof of model reasoning. 强调归因可视化只是近似，并不是模型推理过程的直接证据。
 
 ## Project Structure / 项目结构
 
@@ -118,16 +88,11 @@ Default model:
 Qwen/Qwen2.5-1.5B-Instruct
 ```
 
-默认模型是 `Qwen/Qwen2.5-1.5B-Instruct`。
+Default model is `Qwen/Qwen2.5-1.5B-Instruct`. 默认模型是 `Qwen/Qwen2.5-1.5B-Instruct`。
 
 ## Limitations / 局限
 
-- The visualization uses a gradient-based attribution signal. It is an approximation.
-- The highlighted tokens should not be treated as the model's full reasoning process.
-- Longer outputs take more memory and more time.
-- Results can vary across hardware and model versions.
-
-- 这个可视化使用基于梯度的归因信号，只是一种近似。
-- 高亮 token 不应被理解为模型完整的推理过程。
-- 输出越长，所需内存和时间越多。
-- 不同硬件和模型版本可能产生不同结果。
+- The visualization uses a gradient-based attribution signal. It is an approximation. 这个可视化使用基于梯度的归因信号，只是一种近似。
+- The highlighted tokens should not be treated as the model's full reasoning process. 高亮 token 不应被理解为模型完整的推理过程。
+- Longer outputs take more memory and more time. 输出越长，所需内存和时间越多。
+- Results can vary across hardware and model versions. 不同硬件和模型版本可能产生不同结果。
