@@ -45,7 +45,7 @@ Generated visualizations are saved into. 生成出来的可视化文件会保存
 outputs/
 ```
 
-For a public teaching repository, it is useful to include a few selected examples. The current demo set uses two Chinese examples and one English example: copyright, big-data recommendation, and data bias. 如果要公开作为教学仓库，建议保留少量精选示例。当前 demo 设计包含两个中文示例和一个英文示例：著作权、大数据推荐、数据偏见。
+For a public teaching repository, it is useful to include a few selected examples. The current demo set uses one Chinese example and two English examples: copyright, big-data recommendation, and data bias. 如果要公开作为教学仓库，建议保留少量精选示例。当前 demo 设计包含一个中文示例和两个英文示例：著作权、大数据推荐、数据偏见。
 
 ## Uploading to GitHub / 上传到 GitHub
 
