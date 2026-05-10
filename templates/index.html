@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Next-Token Visualizer | 下一个 Token 可视化</title>
+    <style>
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Arial Unicode MS', 'Microsoft YaHei', sans-serif;
+            padding: 40px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 { color: #95d5b2; border-bottom: 2px solid #333; padding-bottom: 10px;}
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: bold; color: #a0c4ff;}
+        textarea, input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            background: #1e1e1e;
+            border: 1px solid #333;
+            color: #fff;
+            border-radius: 6px;
+            font-family: inherit;
+            box-sizing: border-box;
+            font-size: 16px;
+        }
+        textarea { height: 120px; resize: vertical; }
+        button {
+            background-color: #95d5b2;
+            color: #121212;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+            width: 100%;
+        }
+        button:hover { background-color: #74c69d; }
+        button:disabled { background-color: #555; cursor: not-allowed; color: #999;}
+        
+        .progress-container {
+            margin-top: 30px;
+            display: none;
+            background: #1e1e1e;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .progress-bar-bg {
+            background: #333;
+            height: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+        .progress-bar-fill {
+            background: #95d5b2;
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        .history {
+            margin-top: 40px;
+        }
+        .history h3 {
+            color: #a0c4ff;
+        }
+        .history a {
+            display: block;
+            color: #e0e0e0;
+            text-decoration: none;
+            margin-bottom: 10px;
+            padding: 15px;
+            background: #1e1e1e;
+            border-left: 4px solid #95d5b2;
+            border-radius: 4px;
+            transition: transform 0.2s, background 0.2s;
+        }
+        .history a:hover { 
+            background: #2a2a2a; 
+            transform: translateX(5px);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Qwen Next-Token Visualizer<br><span style="font-size: 0.58em; color: #a0c4ff;">Qwen 下一个 Token 生成可视化</span></h1>
+    
+    <div class="form-group">
+        <label for="prompt">Prompt / 提示词</label>
+        <textarea id="prompt" placeholder="Type any short question or sentence. / 输入任意一个简短问题或句子。"></textarea>
+    </div>
+    
+    <div class="form-group">
+        <label for="max-tokens">Max new tokens / 最多生成 Token 数（必须大于 15）</label>
+        <input type="number" id="max-tokens" min="16" value="60">
+    </div>
+    
+    <button id="btn-generate">Generate Visualization / 生成可视化</button>
+
+    <div class="progress-container" id="progress-container">
+        <label id="status-text" style="display: none;">Loading model and computing token influences... / 正在加载模型并计算 Token 影响...</label>
+        <div id="live-output" style="color: #e0e0e0; font-family: 'Arial Unicode MS', sans-serif; font-size: 16px; line-height: 1.6; min-height: 24px;"></div>
+    </div>
+
+    <div class="history" id="history-container">
+        <h3>Generated Visualizations / 已生成的可视化</h3>
+        <div id="links-list">
+            {% for filename in output_files %}
+                <a href="{{ url_for('serve_output', filename=filename) }}" target="_blank">View visualization / 查看可视化：{{ filename }}</a>
+            {% else %}
+                <p style="color: #777;">No saved visualizations yet. / 暂无已保存的可视化。</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script>
+        const btnGenerate = document.getElementById('btn-generate');
+        const progressContainer = document.getElementById('progress-container');
+        const progressBarFill = document.getElementById('progress-bar-fill');
+        const statusText = document.getElementById('status-text');
+        const linksList = document.getElementById('links-list');
+
+        // Feature 3: Restore max tokens from local storage if available
+        if (localStorage.getItem('maxTokens')) {
+            document.getElementById('max-tokens').value = localStorage.getItem('maxTokens');
+        }
+
+        btnGenerate.addEventListener('click', async () => {
+            const prompt = document.getElementById('prompt').value.trim();
+            const maxTokens = document.getElementById('max-tokens').value;
+
+            if (!prompt) {
+                alert("Please enter a prompt. / 请输入提示词。");
+                return;
+            }
+            if (maxTokens < 16) {
+                alert("Max new tokens must be greater than 15. / 最多生成 Token 数必须大于 15。");
+                return;
+            }
+
+            // Save maxTokens for next time
+            localStorage.setItem('maxTokens', maxTokens);
+
+            // UI State updates
+            btnGenerate.disabled = true;
+            progressContainer.style.display = 'block';
+            statusText.style.display = 'none';
+            document.getElementById('live-output').innerText = "";
+
+            try {
+                // Connect to Flask SSE endpoint
+                const response = await fetch('/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt, max_tokens: maxTokens })
+                });
+
+                if (!response.ok) {
+                    throw new Error("Generation request failed. / 生成请求失败。");
+                }
+
+                // Read streaming response
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder("utf-8");
+                let buffer = "";
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    let boundary = buffer.indexOf('\n\n');
+                    
+                    // Parse Server-Sent Events line by line
+                    while (boundary !== -1) {
+                        const chunk = buffer.substring(0, boundary);
+                        buffer = buffer.substring(boundary + 2);
+                        boundary = buffer.indexOf('\n\n');
+
+                        if (chunk.startsWith('data: ')) {
+                            const dataStr = chunk.substring(6);
+                            if (dataStr) {
+                                try {
+                                    const data = JSON.parse(dataStr);
+                                    
+                                    if (data.status === 'generating') {
+                                        if (data.token) {
+                                            document.getElementById('live-output').innerText += data.token + " ";
+                                        }
+                                    } else if (data.status === 'done') {
+                                        statusText.style.display = 'block';
+                                        statusText.innerText = "Generation complete. / 生成完成。";
+                                        
+                                        // Feature 2: Append clickable link
+                                        const a = document.createElement('a');
+                                        a.href = data.link;
+                                        a.target = "_blank"; // Open in new tab
+                                        a.innerText = "View visualization / 查看可视化：" + data.filename;
+                                        linksList.prepend(a); // Add to top of list
+                                    }
+                                } catch (e) {
+                                    console.error("Parse error", e, dataStr);
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error(error);
+                statusText.style.display = 'block';
+                statusText.innerText = "An error occurred during generation. / 生成过程中出现错误。";
+            } finally {
+                // Re-enable button for repeated use
+                btnGenerate.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
