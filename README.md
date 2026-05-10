@@ -39,22 +39,26 @@ PyTorch installation can vary by operating system and hardware. If `pip install 
 
 ## Saved Outputs / 保存的结果
 
-Generated visualizations are saved into. 生成出来的可视化文件会保存在：
+Generated visualizations are saved in this folder. 生成出来的可视化文件会保存在这个文件夹：
 
 ```text
 outputs/
 ```
 
-For a public teaching repository, it is useful to include a few selected examples. The current demo set uses one Chinese example and two English examples: copyright, big-data recommendation, and data bias. 如果要公开作为教学仓库，建议保留少量精选示例。当前 demo 设计包含一个中文示例和两个英文示例：著作权、大数据推荐、数据偏见。
+For a public teaching repository, use a small demo set that shows the tool across disciplines instead of making it look like a law-only project. The selected demo set has one Chinese example and two English examples. 如果要公开作为教学仓库，建议使用少量跨学科示例，避免让项目看起来只服务于法学课程。当前选定的 demo 包含一个中文示例和两个英文示例。
 
-## Preparing Demo Outputs / 准备示例可视化
+1. `01_解释一下著作权.html`: copyright as a legal, cultural, and creative-work topic. `01_解释一下著作权.html`：用著作权作为法律、文化与创作活动相关的示例。
+2. `02_How_does_big_data_recommendation_decide_what_content_to_show.html`: platform recommendation as a media, communication, and data-society topic. `02_How_does_big_data_recommendation_decide_what_content_to_show.html`：用大数据推荐作为平台、传播与数据社会相关的示例。
+3. `03_What_is_data_bias.html`: data bias as a social impact and fairness topic. `03_What_is_data_bias.html`：用数据偏见作为社会影响与公平性相关的示例。
+
+## Demo Output Policy / 示例文件选择
 
 This repository is meant to stay small and classroom-ready. 这个仓库应该保持轻量，方便课堂直接使用。
 
 1. Generate short classroom examples with the web interface. 用网页界面生成简短的课堂示例。
-2. Keep only selected demo `.html` files in `outputs/`. 只把精选出来的 demo `.html` 文件保留在 `outputs/` 里。
-3. Use clear filenames such as `01_解释一下著作权.html`. 使用清楚的文件名，例如 `01_解释一下著作权.html`。
-4. Avoid examples that make the project look limited to one discipline. 避免让示例看起来只属于某一个专业。
+2. Keep only the selected demo `.html` files in `outputs/`. 只把精选出来的 demo `.html` 文件保留在 `outputs/` 里。
+3. Use readable filenames that show the prompt topic, such as `03_What_is_data_bias.html`. 使用能看出问题主题的文件名，例如 `03_What_is_data_bias.html`。
+4. Prefer examples that help humanities and social science students discuss AI in their own fields. 优先选择能帮助人文社科学生把 AI 放回自己专业语境中讨论的示例。
 5. Do not include `.DS_Store`, `__pycache__/`, `.venv/`, or model cache folders. 不要包含 `.DS_Store`、`__pycache__/`、`.venv/` 或模型缓存文件夹。
 
 ## Suggested Classroom Use / 课堂使用建议
@@ -74,7 +78,8 @@ This repository is meant to stay small and classroom-ready. 这个仓库应该�
 │   └── index.html
 ├── outputs/
 │   ├── README.md
-│   └── .gitkeep
+│   ├── .gitkeep
+│   └── selected demo .html files
 ├── start_server.command
 ├── requirements.txt
 ├── TEACHING_NOTES.md
