@@ -47,15 +47,15 @@ outputs/
 
 For a public teaching repository, it is useful to include a few selected examples. The current demo set uses one Chinese example and two English examples: copyright, big-data recommendation, and data bias. 如果要公开作为教学仓库，建议保留少量精选示例。当前 demo 设计包含一个中文示例和两个英文示例：著作权、大数据推荐、数据偏见。
 
-## Uploading to GitHub / 上传到 GitHub
+## Preparing Demo Outputs / 准备示例可视化
 
-If you are using the GitHub website. 如果你使用 GitHub 网页上传：
+This repository is meant to stay small and classroom-ready. 这个仓库应该保持轻量，方便课堂直接使用。
 
-1. Create a new repository. 新建一个 repository。
-2. Upload the contents of this folder. 上传这个文件夹里的内容。
-3. Keep `app.py`, `templates/`, `outputs/`, `README.md`, `requirements.txt`, `TEACHING_NOTES.md`, `LICENSE`, and `.gitignore`. 保留 `app.py`、`templates/`、`outputs/`、`README.md`、`requirements.txt`、`TEACHING_NOTES.md`、`LICENSE` 和 `.gitignore`。
-4. If you generate example visualizations, place the selected `.html` files in `outputs/`. 如果你生成了示例可视化，把精选的 `.html` 文件放在 `outputs/` 里。
-5. Do not upload `.DS_Store`, `__pycache__/`, `.venv/`, or model cache folders. 不要上传 `.DS_Store`、`__pycache__/`、`.venv/` 或模型缓存文件夹。
+1. Generate short classroom examples with the web interface. 用网页界面生成简短的课堂示例。
+2. Keep only selected demo `.html` files in `outputs/`. 只把精选出来的 demo `.html` 文件保留在 `outputs/` 里。
+3. Use clear filenames such as `01_解释一下著作权.html`. 使用清楚的文件名，例如 `01_解释一下著作权.html`。
+4. Avoid examples that make the project look limited to one discipline. 避免让示例看起来只属于某一个专业。
+5. Do not include `.DS_Store`, `__pycache__/`, `.venv/`, or model cache folders. 不要包含 `.DS_Store`、`__pycache__/`、`.venv/` 或模型缓存文件夹。
 
 ## Suggested Classroom Use / 课堂使用建议
 
