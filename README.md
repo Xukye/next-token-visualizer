@@ -103,3 +103,9 @@ Default model is `Qwen/Qwen2.5-1.5B-Instruct`. 默认模型是 `Qwen/Qwen2.5-1.5
 - The highlighted tokens should not be treated as the model's full reasoning process. 高亮 token 不应被理解为模型完整的推理过程。
 - Longer outputs take more memory and more time. 输出越长，所需内存和时间越多。
 - Results can vary across hardware and model versions. 不同硬件和模型版本可能产生不同结果。
+
+## How The Numbers Are Calculated / 数值如何计算
+
+For a generated token `y`, the left attribution panel uses a gradient-times-input score for each earlier token `i`: `a_i = ||(d z_y / d e_i) * e_i||_2`, where `z_y` is the generated token's logit and `e_i` is the embedding of token `i`. The displayed percentage is `a_i / sum_j a_j * 100%`, and the bar width is scaled as `a_i / max_j a_j`. 对于已经生成的 token `y`，左侧归因面板对每个前文 token `i` 使用 gradient-times-input 分数：`a_i = ||(d z_y / d e_i) * e_i||_2`，其中 `z_y` 是该生成 token 的 logit，`e_i` 是 token `i` 的 embedding。界面里的百分比是 `a_i / sum_j a_j * 100%`，条形长度按 `a_i / max_j a_j` 缩放。
+
+For the candidate tokens on the right, the model first outputs raw scores/logits `s_k`. The displayed probability is computed by softmax over the vocabulary: `p_k = exp(s_k) / sum_v exp(s_v)`, then shown as `p_k * 100%`; the bar width is scaled relative to the largest displayed candidate probability. 右侧候选 token 先来自模型输出的原始分数/logit `s_k`。界面显示的概率用整个词表上的 softmax 计算：`p_k = exp(s_k) / sum_v exp(s_v)`，再显示为 `p_k * 100%`；条形长度相对于当前展示候选里最大的概率进行缩放。
