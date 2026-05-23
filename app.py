@@ -81,6 +81,33 @@ def generate_stream(prompt, max_new_tokens):
         
         next_token_id = torch.argmax(logits).item()
         next_token_str = tokenizer.decode([next_token_id]).replace('\n', ' ')
+
+        # Do not add the terminal ChatML/EOS token as a visualization step.
+        # It is not rendered as a visible token below, so keeping a step for it
+        # would make the final frame point at a missing DOM element.
+        if next_token_id == tokenizer.eos_token_id:
+            break
+
+        with torch.no_grad():
+            display_logits = logits.detach().to(torch.float32)
+            probs = torch.softmax(display_logits, dim=-1)
+            candidate_count = min(12, display_logits.shape[0])
+            candidate_probs, candidate_ids = torch.topk(probs, k=candidate_count)
+            candidate_logits = display_logits[candidate_ids]
+            step_candidates = []
+            for rank, (candidate_id, candidate_logit, candidate_prob) in enumerate(
+                zip(candidate_ids.tolist(), candidate_logits.tolist(), candidate_probs.tolist()),
+                start=1,
+            ):
+                candidate_text = tokenizer.decode([candidate_id]).replace('\n', ' ')
+                step_candidates.append({
+                    "rank": rank,
+                    "token": candidate_text,
+                    "token_id": int(candidate_id),
+                    "score": float(candidate_logit),
+                    "prob": float(candidate_prob),
+                    "chosen": int(candidate_id) == next_token_id,
+                })
         
         target_logit = logits[next_token_id]
         model.zero_grad(set_to_none=True)
@@ -105,17 +132,15 @@ def generate_stream(prompt, max_new_tokens):
             weight = float(scores[idx]) / max_score
             pct = (float(scores[idx]) / sum_scores) * 100
             if weight > 0.05: # Threshold
-                step_attributions.append({"src": int(idx), "weight": weight, "pct": pct})
+                step_attributions.append({"src": int(idx), "weight": weight, "pct": pct, "score": float(scores[idx])})
                 
         steps_data.append({
             "generated_token_idx": prompt_length + step,
+            "generated_token": next_token_str,
+            "candidates": step_candidates,
             "attributions": step_attributions
         })
         
-        # Terminate generation early to prevent <|im_end|> from entering the visualization
-        if next_token_id == tokenizer.eos_token_id:
-            break
-            
         # Append to sequence
         tokens.append(next_token_str)
         generated_ids = torch.cat([generated_ids, torch.tensor([[next_token_id]], device=device)], dim=-1)
@@ -124,6 +149,11 @@ def generate_stream(prompt, max_new_tokens):
         del inputs_embeds
         del outputs
         del logits
+        del display_logits
+        del probs
+        del candidate_probs
+        del candidate_ids
+        del candidate_logits
         del target_logit
         del grad
         del embeds
@@ -167,10 +197,14 @@ def generate_html(tokens, steps_data, prompt_length, output_path):
                 color: #e0e0e0;
                 font-family: 'Arial Unicode MS', 'Microsoft YaHei', sans-serif;
                 margin: 0;
-                padding: 20px;
+                padding: 24px clamp(24px, 5vw, 72px);
                 display: flex;
                 flex-direction: column;
                 align-items: center;
+                box-sizing: border-box;
+            }
+            .page-shell {
+                width: min(1280px, 100%);
             }
             .controls {
                 margin-bottom: 30px;
@@ -189,13 +223,14 @@ def generate_html(tokens, steps_data, prompt_length, output_path):
             button:hover { background-color: #444; }
             .container {
                 position: relative;
-                width: 960px;
-                flex-shrink: 0;
+                width: 100%;
                 text-align: left;
                 padding: 20px;
                 background: #1e1e1e;
                 border-radius: 10px;
                 white-space: pre-wrap;
+                overflow: hidden;
+                box-sizing: border-box;
             }
             .role-block {
                 margin-bottom: 20px;
@@ -242,6 +277,14 @@ def generate_html(tokens, steps_data, prompt_length, output_path):
                 box-shadow: 0 0 6px rgba(255, 173, 173, 0.5);
                 z-index: 3;
             }
+            .token.pinned-target {
+                outline: 1px solid #ffd166;
+                box-shadow: 0 0 10px rgba(255, 209, 102, 0.55);
+            }
+            .token.hover-target {
+                outline: 2px solid #95d5b2;
+                box-shadow: 0 0 12px rgba(149, 213, 178, 0.7);
+            }
             .token.active-source { 
                 background-color: rgba(160, 196, 255, 0.4); 
                 box-shadow: 0 0 6px rgba(160, 196, 255, 0.5);
@@ -255,22 +298,102 @@ def generate_html(tokens, steps_data, prompt_length, output_path):
                 z-index: 4;
             }
             
-            #chart-container {
+            #reference-panel {
                 background: #1a1a1a;
                 padding: 20px;
                 border-radius: 10px;
-                min-height: 100px;
-                flex: 1;
-                min-width: 300px;
-                position: sticky;
-                top: 20px;
+                margin-top: 24px;
+                box-sizing: border-box;
+                width: 100%;
             }
-            #chart-container h3 {
+            #reference-panel h3 {
                 margin-top: 0;
                 color: #a0c4ff;
                 font-size: 16px;
                 border-bottom: 1px solid #333;
                 padding-bottom: 10px;
+            }
+            .reference-grid {
+                display: grid;
+                grid-template-columns: minmax(520px, 1.35fr) minmax(320px, 1fr);
+                gap: 22px;
+                align-items: start;
+            }
+            .reference-card {
+                min-width: 0;
+                background: #202020;
+                border: 1px solid #333;
+                border-radius: 8px;
+                padding: 14px;
+                box-sizing: border-box;
+            }
+            .attribution-card {
+                display: grid;
+                grid-template-columns: minmax(160px, 220px) minmax(300px, 1fr);
+                gap: 18px;
+                align-items: start;
+            }
+            .reference-pie {
+                display: flex;
+                justify-content: center;
+                align-items: flex-start;
+                min-height: 180px;
+            }
+            .reference-list {
+                min-width: 0;
+            }
+            .reference-list-title {
+                color: #888;
+                font-size: 13px;
+                margin-bottom: 12px;
+            }
+            .data-table {
+                display: grid;
+                grid-template-columns: var(--token-col, 8ch) 38px minmax(110px, 1fr) 54px;
+                column-gap: 8px;
+                row-gap: 10px;
+                align-items: center;
+            }
+            .data-row {
+                display: contents;
+                cursor: help;
+            }
+            .data-row > * {
+                cursor: help;
+            }
+            .data-score {
+                color: #888;
+                text-align: right;
+                font-size: 12px;
+                font-variant-numeric: tabular-nums;
+            }
+            .data-label {
+                color: #e0e0e0;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                font-size: 14px;
+                min-width: 0;
+            }
+            .data-bar-bg {
+                height: 10px;
+                background: #2a2a2a;
+                border-radius: 5px;
+                overflow: hidden;
+                min-width: 0;
+            }
+            .data-bar-fill {
+                height: 100%;
+                border-radius: 5px;
+                transition: width 0.3s ease;
+            }
+            .data-pct {
+                text-align: right;
+                font-weight: bold;
+                color: #fff;
+                font-size: 14px;
+                font-variant-numeric: tabular-nums;
+                flex-shrink: 0;
             }
             .chart-row {
                 display: flex;
@@ -312,7 +435,7 @@ def generate_html(tokens, steps_data, prompt_length, output_path):
                 text-shadow: 1px 1px 2px #000;
             }
             
-            svg {
+            #svg-layer {
                 position: absolute;
                 top: 0;
                 left: 0;
@@ -325,28 +448,40 @@ def generate_html(tokens, steps_data, prompt_length, output_path):
                 fill: none;
                 stroke-dasharray: 1000;
                 stroke-dashoffset: 1000;
-                animation: dash 0.6s ease-out forwards;
+                animation: dash 0.2s ease-out forwards;
             }
             @keyframes dash {
               to {
                 stroke-dashoffset: 0;
               }
             }
+            @media (max-width: 760px) {
+                body { padding: 16px; }
+                .reference-grid {
+                    grid-template-columns: 1fr;
+                }
+                .attribution-card {
+                    grid-template-columns: 1fr;
+                }
+                .reference-pie {
+                    min-height: auto;
+                }
+            }
         </style>
     </head>
     <body>
-        <div class="controls" style="display: flex; align-items: center; width: 100%; max-width: 1000px;">
-            <button id="btn-prev">Previous / 上一步</button>
-            <button id="btn-play">Play / Pause / 播放/暂停</button>
-            <button id="btn-next">Next / 下一步</button>
-            <input type="range" id="timeline-slider" min="-1" max="0" value="-1" style="margin-left: 20px; flex-grow: 1;">
-        </div>
-        <div style="display: flex; gap: 30px; align-items: flex-start; max-width: 1500px; width: 100%;">
-            <div class="container" id="text-container"><svg id="svg-layer"></svg></div>
-            <div id="chart-container">
-                <h3>Token Influence Breakdown / Token 影响分布</h3>
-                <div id="chart-content">Hover over a token or play the animation to see influence scores. / 将鼠标悬停在 Token 上，或播放动画查看影响分布。</div>
+        <div class="page-shell">
+            <div class="controls" style="display: flex; align-items: center; width: 100%;">
+                <button id="btn-prev">Previous / 上一步</button>
+                <button id="btn-play">Play / Pause / 播放/暂停</button>
+                <button id="btn-next">Next / 下一步</button>
+                <input type="range" id="timeline-slider" min="-1" max="0" value="-1" style="margin-left: 20px; flex-grow: 1;">
             </div>
+            <div class="container" id="text-container"><svg id="svg-layer"></svg></div>
+            <section id="reference-panel">
+                <h3>Data Reference / 数据参考</h3>
+                <div id="reference-content">Hover over a token to inspect its attention, or click to pin it. / 将鼠标悬停在 Token 上查看注意力分布，或点击固定这个 Token 的数据。</div>
+            </section>
         </div>
 
         <script>
@@ -354,13 +489,40 @@ def generate_html(tokens, steps_data, prompt_length, output_path):
             const container = document.getElementById('text-container');
             const svgLayer = document.getElementById('svg-layer');
             const slider = document.getElementById('timeline-slider');
+            const referenceContent = document.getElementById('reference-content');
             let currentStep = -1;
             let isPlaying = false;
             let playInterval;
+            let pinnedTarget = null;
+            let hoverTarget = null;
+            const readyStep = data.steps.length;
 
-            slider.max = data.steps.length;
+            function isInteractionReady() {
+                return data.steps.length > 0 && currentStep >= readyStep;
+            }
+
+            function clearInteractionState() {
+                pinnedTarget = null;
+                hoverTarget = null;
+            }
+
+            function stopPlayback() {
+                if (playInterval) {
+                    clearInterval(playInterval);
+                    playInterval = null;
+                }
+                isPlaying = false;
+            }
+
+            function setCurrentStep(nextStep) {
+                currentStep = Math.max(-1, Math.min(readyStep, nextStep));
+                slider.value = currentStep;
+            }
+
+            slider.max = readyStep;
             slider.addEventListener('input', (e) => {
-                currentStep = parseInt(e.target.value);
+                stopPlayback();
+                setCurrentStep(parseInt(e.target.value));
                 updateView();
             });
 
@@ -373,6 +535,9 @@ def generate_html(tokens, steps_data, prompt_length, output_path):
             data.tokens.forEach((t, i) => {
                 const span = document.createElement('span');
                 span.id = 'token-' + i;
+                if (i >= data.prompt_length && i < data.prompt_length + data.steps.length) {
+                    span.dataset.generated = 'true';
+                }
                 
                 // Determine Role and add breaks
                 let t_trim = t.trim();
@@ -404,35 +569,185 @@ def generate_html(tokens, steps_data, prompt_length, output_path):
                 span.innerText = t;
                 currentBlock.appendChild(span);
             });
+            function escapeHtml(value) {
+                return String(value)
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
 
-            let hoverTarget = null;
+            const chartColors = ['#ff6b6b', '#4dabf7', '#95d5b2', '#ffd166', '#a0c4ff', '#e0e0e0', '#ff9f1c', '#b5179e', '#f72585', '#4361ee', '#7209b7'];
 
-            // Hover Events
+            function polarPoint(cx, cy, radius, angleDegrees) {
+                const angleRadians = (angleDegrees - 90) * Math.PI / 180.0;
+                return {
+                    x: cx + (radius * Math.cos(angleRadians)),
+                    y: cy + (radius * Math.sin(angleRadians))
+                };
+            }
+
+            function pieSlicePath(cx, cy, radius, startAngle, endAngle) {
+                const safeEndAngle = Math.min(endAngle, startAngle + 359.99);
+                const start = polarPoint(cx, cy, radius, safeEndAngle);
+                const end = polarPoint(cx, cy, radius, startAngle);
+                const largeArcFlag = safeEndAngle - startAngle <= 180 ? "0" : "1";
+                return [
+                    "M", cx, cy,
+                    "L", start.x, start.y,
+                    "A", radius, radius, 0, largeArcFlag, 0, end.x, end.y,
+                    "Z"
+                ].join(" ");
+            }
+
+            function tooltipText(item, scoreLabel) {
+                const pieces = [`${item.text}: ${item.pct.toFixed(2)}%`];
+                if (Number.isFinite(item.score)) {
+                    pieces.push(`${scoreLabel}: ${item.score.toFixed(4)}`);
+                }
+                return escapeHtml(pieces.join(" | "));
+            }
+
+            function textUnits(value) {
+                return Array.from(String(value)).reduce((count, char) => {
+                    return count + (/[\u3400-\u9fff\uff00-\uffef]/.test(char) ? 2 : 1);
+                }, 0);
+            }
+
+            function tokenColumnStyle(items) {
+                const maxUnits = Math.max(4, ...items.map(item => textUnits(item.text)));
+                const colCh = Math.min(Math.max(maxUnits + 1, 5), 14);
+                return `--token-col: ${colCh}ch;`;
+            }
+
+            function renderPieSvg(items, scoreLabel) {
+                let currentAngle = 0;
+                const slices = items.map((item, index) => {
+                    const startAngle = currentAngle;
+                    const endAngle = currentAngle + Math.max(0, Math.min(100, item.pct)) * 3.6;
+                    currentAngle = endAngle;
+                    if (endAngle <= startAngle) return "";
+                    const color = item.color || chartColors[index % chartColors.length];
+                    const title = tooltipText(item, scoreLabel);
+                    return `<path d="${pieSlicePath(80, 80, 70, startAngle, endAngle)}" fill="${color}" style="cursor: help;"><title>${title}</title></path>`;
+                }).join("");
+
+                return `
+                    <svg viewBox="0 0 160 160" style="width: clamp(120px, 28vw, 180px); aspect-ratio: 1; flex-shrink: 0; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.4));">
+                        <circle cx="80" cy="80" r="70" fill="#2a2a2a"></circle>
+                        ${slices}
+                    </svg>
+                `;
+            }
+
+            function renderCandidateList(stepData, displayCount) {
+                if (!stepData || !stepData.candidates || stepData.candidates.length === 0) {
+                    return `
+                        <div style="color: #666; font-size: 14px; padding: 10px 0;">No candidate data. / 暂无候选数据。</div>
+                    `;
+                }
+
+                const visibleCandidates = stepData.candidates.slice(0, displayCount || stepData.candidates.length);
+                const maxProb = Math.max(...visibleCandidates.map(c => c.prob || 0), 0.000001);
+                const candidateItems = visibleCandidates.map((candidate, index) => {
+                    let tokenText = candidate.token;
+                    if (tokenText === undefined || tokenText === null) tokenText = '';
+                    if (String(tokenText).trim() === '') tokenText = '␣';
+                    return {
+                        text: tokenText,
+                        pct: (candidate.prob || 0) * 100,
+                        score: Number(candidate.score),
+                        color: index === 0 ? '#ff6b6b' : '#4dabf7',
+                        barWidth: Math.max(2, Math.min(100, ((candidate.prob || 0) / maxProb) * 100))
+                    };
+                });
+
+                const rows = candidateItems.map(item => {
+                    const safeToken = escapeHtml(item.text);
+                    const probPct = item.pct.toFixed(2);
+                    const scoreText = Number.isFinite(item.score) ? item.score.toFixed(2) : '';
+                    const title = tooltipText(item, 'score');
+                    return `
+                        <div title="${title}" class="data-row">
+                            <div class="data-label" title="${title}">${safeToken}</div>
+                            <div class="data-score">${scoreText}</div>
+                            <div title="${title}" class="data-bar-bg">
+                                <div class="data-bar-fill" style="width: ${item.barWidth}%; background: ${item.color};"></div>
+                            </div>
+                            <div class="data-pct">${probPct}%</div>
+                        </div>
+                    `;
+                }).join('');
+
+                return `<div class="data-table" style="${tokenColumnStyle(candidateItems)}">${rows}</div>`;
+            }
+
+            function setHoverTarget(nextHoverTarget) {
+                if (hoverTarget !== nextHoverTarget) {
+                    hoverTarget = nextHoverTarget;
+                    updateView();
+                }
+            }
+
+            function activeInspectionTarget() {
+                return hoverTarget !== null ? hoverTarget : pinnedTarget;
+            }
+
+            function tokenIndexFromElement(el) {
+                const tokenEl = el && el.closest ? el.closest('.token') : null;
+                if (!tokenEl || !container.contains(tokenEl) || tokenEl.classList.contains('hidden-token')) return null;
+                const tokenIndex = parseInt(tokenEl.id.replace('token-', ''));
+                return Number.isFinite(tokenIndex) ? tokenIndex : null;
+            }
+
+            document.querySelectorAll('.token').forEach((tokenEl) => {
+                tokenEl.addEventListener('click', (e) => {
+                    const tokenIndex = tokenIndexFromElement(e.target);
+                    if (tokenIndex === null) return;
+                    e.stopPropagation();
+                    pinnedTarget = tokenIndex;
+                    hoverTarget = tokenIndex;
+                    updateView();
+                });
+            });
+
             container.addEventListener('mouseover', (e) => {
-                if (currentStep >= data.steps.length) {
-                    const el = e.target.closest('.token');
-                    if (el) {
-                        hoverTarget = parseInt(el.id.replace('token-', ''));
-                        updateView();
-                    }
+                const tokenIndex = tokenIndexFromElement(e.target);
+                if (tokenIndex !== null) {
+                    setHoverTarget(tokenIndex);
                 }
             });
 
             container.addEventListener('mouseout', (e) => {
-                if (currentStep >= data.steps.length) {
-                    const el = e.target.closest('.token');
-                    if (el) {
-                        if (e.relatedTarget && el.contains(e.relatedTarget)) {
-                            return;
-                        }
-                        hoverTarget = null;
-                        updateView();
-                    }
+                const tokenIndex = tokenIndexFromElement(e.target);
+                if (tokenIndex === null) return;
+                const relatedToken = tokenIndexFromElement(e.relatedTarget);
+                if (relatedToken === tokenIndex) return;
+                if (hoverTarget !== null) {
+                    hoverTarget = null;
+                    updateView();
+                }
+            });
+
+            container.addEventListener('mouseleave', () => {
+                if (hoverTarget !== null) {
+                    hoverTarget = null;
+                    updateView();
+                }
+            });
+
+            container.addEventListener('click', () => {
+                if (pinnedTarget !== null || hoverTarget !== null) {
+                    pinnedTarget = null;
+                    hoverTarget = null;
+                    updateView();
                 }
             });
 
             function updateView() {
                 slider.value = currentStep;
+                container.classList.toggle('interaction-ready', isInteractionReady());
                 
                 // Clear SVG and redefine arrow markers
                 svgLayer.innerHTML = `
@@ -458,19 +773,28 @@ def generate_html(tokens, steps_data, prompt_length, output_path):
                 // Remove highlights from previous steps
                 for(let i=0; i<data.tokens.length; i++) {
                     const el = document.getElementById('token-' + i);
-                    el.classList.remove('active-target', 'active-source', 'future-token');
+                    el.classList.remove('active-target', 'active-source', 'future-token', 'pinned-target', 'hover-target');
+                    if (pinnedTarget === i) {
+                        el.classList.add('pinned-target');
+                    }
+                    if (hoverTarget === i) {
+                        el.classList.add('hover-target');
+                    }
                     
-                    // Faint out future tokens based on current step
-                    if (i >= data.prompt_length + currentStep + 1) {
+                    // Faint out future tokens based on current step, unless the user is inspecting a token.
+                    if (activeInspectionTarget() === null && i >= data.prompt_length + currentStep + 1) {
                         el.classList.add('future-token');
                     }
                 }
 
-                const isHoverMode = (currentStep >= data.steps.length && hoverTarget !== null);
+                const inspectionTarget = activeInspectionTarget();
+                const isHoverMode = (inspectionTarget !== null);
                 let chartItems = [];
+                let selectedStepData = null;
 
                 // Draw lines for all steps up to currentStep
-                for (let s = 0; s <= currentStep; s++) {
+                const lastStepToDraw = isHoverMode ? data.steps.length - 1 : currentStep;
+                for (let s = 0; s <= lastStepToDraw; s++) {
                     if (s >= data.steps.length) continue;
                     
                     const stepData = data.steps[s];
@@ -483,13 +807,14 @@ def generate_html(tokens, steps_data, prompt_length, output_path):
                     let isTargetCurrent = false;
                     if (isCurrent && !isHoverMode) {
                         isTargetCurrent = true;
+                        selectedStepData = stepData;
                         targetEl.classList.add('active-target');
                         
                         // Populate chart for currently generating token
                         stepData.attributions.forEach(attr => {
                             const srcEl = document.getElementById('token-' + attr.src);
                             if (srcEl && !srcEl.classList.contains('hidden-token')) {
-                                chartItems.push({ labelId: attr.src, pct: attr.pct });
+                                chartItems.push({ labelId: attr.src, pct: attr.pct, score: attr.score });
                             }
                         });
                     }
@@ -507,12 +832,13 @@ def generate_html(tokens, steps_data, prompt_length, output_path):
                         let isThinBright = false;
 
                         if (isHoverMode) {
-                            if (targetIdx === hoverTarget) {
+                            if (targetIdx === inspectionTarget) {
+                                selectedStepData = stepData;
                                 isThickBright = true;
                                 targetEl.classList.add('active-target');
                                 srcEl.classList.add('active-source');
-                                chartItems.push({ labelId: attr.src, pct: attr.pct });
-                            } else if (srcIdx === hoverTarget) {
+                                chartItems.push({ labelId: attr.src, pct: attr.pct, score: attr.score });
+                            } else if (srcIdx === inspectionTarget) {
                                 isThinBright = true;
                                 srcEl.classList.add('active-target');
                                 // Do not push outgoing influences to the chart
@@ -574,15 +900,12 @@ def generate_html(tokens, steps_data, prompt_length, output_path):
                     });
                 }
                 
-                // Render Influence Bar Chart
-                const chartContent = document.getElementById('chart-content');
+                // Render data reference panel
                 if (chartItems.length === 0) {
-                    chartContent.innerHTML = `
-                        <div style="display: flex; align-items: center; justify-content: center; margin-top: 15px; padding: 10px;">
-                            <div style="width: 160px; height: 160px; border-radius: 50%; background: #2a2a2a; margin-right: 40px; box-shadow: inset 0 4px 12px rgba(0,0,0,0.2); flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: #555; font-size: 14px; text-align: center;">No data<br>无数据</div>
-                            <div style="flex-grow: 1; max-width: 300px; color: #666; font-size: 14px;">
-                                Hover over a token or play the animation to see influence scores.<br><br>将鼠标悬停在 Token 上，或点击播放动画来查看影响分布。
-                            </div>
+                    const emptyMessage = `Hover over a generated token, or click it to pin the view.<br><br>将鼠标悬停在已生成 Token 上，或点击固定这个 Token 的数据。`;
+                    referenceContent.innerHTML = `
+                        <div style="color: #666; font-size: 14px; padding: 10px 0;">
+                            ${emptyMessage}
                         </div>
                     `;
                 } else {
@@ -596,8 +919,9 @@ def generate_html(tokens, steps_data, prompt_length, output_path):
                             if (text.trim() === '') text = '␣';
                             else text = text.trim();
                             
-                            if (!groupMap[text]) groupMap[text] = 0;
-                            groupMap[text] += (item.pct || 0);
+                            if (!groupMap[text]) groupMap[text] = { pct: 0, score: 0 };
+                            groupMap[text].pct += (item.pct || 0);
+                            groupMap[text].score += (item.score || 0);
                             rawSum += (item.pct || 0);
                         }
                     });
@@ -605,65 +929,64 @@ def generate_html(tokens, steps_data, prompt_length, output_path):
                     if (rawSum < 100) {
                         const otherPct = 100 - rawSum;
                         if (otherPct > 0.1) {
-                            groupMap['Other / 其他 (long tail / 长尾影响)'] = otherPct;
+                            groupMap['others'] = { pct: otherPct, score: NaN };
                         }
                     } else if (rawSum > 100) {
                         Object.keys(groupMap).forEach(k => {
-                            groupMap[k] = (groupMap[k] / rawSum) * 100;
+                            groupMap[k].pct = (groupMap[k].pct / rawSum) * 100;
                         });
                     }
 
                     const sortedGroups = Object.keys(groupMap).map(k => ({
                         text: k,
-                        pct: groupMap[k]
+                        pct: groupMap[k].pct,
+                        score: groupMap[k].score
                     })).sort((a, b) => {
-                        if (a.text === 'Other / 其他 (long tail / 长尾影响)') return 1;
-                        if (b.text === 'Other / 其他 (long tail / 长尾影响)') return -1;
+                        if (a.text === 'others') return 1;
+                        if (b.text === 'others') return -1;
                         return b.pct - a.pct;
                     });
                     
-                    let conicParts = [];
-                    let currentAcc = 0;
-                    const colors = ['#ff6b6b', '#4dabf7', '#95d5b2', '#ffd166', '#a0c4ff', '#e0e0e0', '#ff9f1c', '#b5179e', '#f72585', '#4361ee', '#7209b7'];
                     let legendHtml = "";
 
-                    const nonOtherGroups = sortedGroups.filter(g => g.text !== 'Other / 其他 (long tail / 长尾影响)');
+                    const nonOtherGroups = sortedGroups.filter(g => g.text !== 'others');
                     const maxNonOtherPct = nonOtherGroups.length > 0 ? nonOtherGroups[0].pct : 100;
 
                     sortedGroups.forEach((g, index) => {
-                        const isOther = g.text === 'Other / 其他 (long tail / 长尾影响)';
-                        const color = isOther ? '#444444' : colors[index % colors.length];
-                        const start = currentAcc;
-                        currentAcc += g.pct;
-                        const end = currentAcc;
-                        
-                        conicParts.push(`${color} ${start}% ${end}%`);
-                        
-                        let barWidthPct = 0;
-                        if (isOther) {
-                            barWidthPct = 100;
-                        } else {
-                            barWidthPct = maxNonOtherPct > 0 ? (g.pct / maxNonOtherPct * 100) : 0;
-                        }
+                        g.color = g.text === 'others' ? '#444444' : chartColors[index % chartColors.length];
+                        const barWidthPct = g.text === 'others' ? 100 : (maxNonOtherPct > 0 ? (g.pct / maxNonOtherPct * 100) : 0);
+                        const safeText = escapeHtml(g.text);
+                        const scoreText = Number.isFinite(g.score) ? g.score.toFixed(2) : '';
+                        const title = tooltipText(g, 'attribution score');
                         
                         legendHtml += `
-                            <div style="display: flex; align-items: center; margin-bottom: 12px;">
-                                <div style="width: 80px; color: #e0e0e0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 14px; margin-right: 12px; flex-shrink: 0;" title="${g.text}">${g.text}</div>
-                                <div style="flex-grow: 1; height: 8px; background: #2a2a2a; border-radius: 4px; overflow: hidden; margin-right: 15px;">
-                                    <div style="width: ${Math.min(barWidthPct, 100)}%; height: 100%; background: ${color}; border-radius: 4px; transition: width 0.3s ease;"></div>
+                            <div title="${title}" class="data-row">
+                                <div class="data-label" title="${title}">${safeText}</div>
+                                <div class="data-score">${scoreText}</div>
+                                <div title="${title}" class="data-bar-bg">
+                                    <div class="data-bar-fill" style="width: ${Math.min(barWidthPct, 100)}%; background: ${g.color};"></div>
                                 </div>
-                                <div style="width: 45px; text-align: right; font-weight: bold; color: #fff; font-size: 14px; flex-shrink: 0;">${g.pct.toFixed(1)}%</div>
+                                <div class="data-pct">${g.pct.toFixed(1)}%</div>
                             </div>
                         `;
                     });
 
-                    const gradient = conicParts.join(', ');
+                    const attributionHtml = `<div class="data-table" style="${tokenColumnStyle(sortedGroups)}">${legendHtml}</div>`;
+                    const candidateCount = sortedGroups.length;
+                    const candidateHtml = renderCandidateList(selectedStepData, candidateCount);
 
-                    chartContent.innerHTML = `
-                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; margin-top: 15px; padding: 10px;">
-                            <div style="width: 140px; height: 140px; border-radius: 50%; background: conic-gradient(${gradient}); margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.4); flex-shrink: 0;"></div>
-                            <div style="width: 100%; max-height: 400px; overflow-y: auto; padding-right: 5px;">
-                                ${legendHtml}
+                    referenceContent.innerHTML = `
+                        <div class="reference-grid">
+                            <div class="reference-card attribution-card">
+                                <div class="reference-pie">${renderPieSvg(sortedGroups, 'attribution score')}</div>
+                                <div class="reference-list">
+                                    <div class="reference-list-title">Gradient attribution / 逆梯度归因</div>
+                                    ${attributionHtml}
+                                </div>
+                            </div>
+                            <div class="reference-card reference-list">
+                                <div class="reference-list-title">Top candidate tokens / 候选 Token 排名</div>
+                                ${candidateHtml}
                             </div>
                         </div>
                     `;
@@ -671,14 +994,16 @@ def generate_html(tokens, steps_data, prompt_length, output_path):
             }
 
             document.getElementById('btn-next').onclick = () => {
-                if (currentStep < data.steps.length) {
-                    currentStep++;
+                if (currentStep < readyStep) {
+                    stopPlayback();
+                    setCurrentStep(currentStep + 1);
                     updateView();
                 }
             };
             document.getElementById('btn-prev').onclick = () => {
                 if (currentStep > -1) {
-                    currentStep--;
+                    stopPlayback();
+                    setCurrentStep(currentStep - 1);
                     updateView();
                 }
             };
@@ -686,16 +1011,18 @@ def generate_html(tokens, steps_data, prompt_length, output_path):
                 isPlaying = !isPlaying;
                 if (isPlaying) {
                     playInterval = setInterval(() => {
-                        if (currentStep < data.steps.length) {
-                            currentStep++;
+                        if (currentStep < readyStep) {
+                            setCurrentStep(currentStep + 1);
                             updateView();
+                            if (isInteractionReady()) {
+                                stopPlayback();
+                            }
                         } else {
-                            clearInterval(playInterval);
-                            isPlaying = false;
+                            stopPlayback();
                         }
-                    }, 800); // 600ms animation + 200ms pause
+                    }, 200); // Match the 200ms arrow animation so each step completes before the next one.
                 } else {
-                    clearInterval(playInterval);
+                    stopPlayback();
                 }
             };
 
